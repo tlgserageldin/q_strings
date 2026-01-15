@@ -11,7 +11,7 @@ bool are_equal(str a, str b) {
   return !memcmp(a.data, b.data, a.len);
 }
 
-str slice(char *start, char *end) {
+str slice(unsigned char *start, unsigned char *end) {
   str s = {0};
   s.data = start;
   s.len = start ? end - start : 0;
@@ -24,16 +24,16 @@ snip cut(str s, char c) {
     return n;
   } // null pointer case
 
-  char *beggining = s.data;
-  char *end = s.data + s.len;
-  char *cut = beggining;
+  unsigned char *beggining = s.data;
+  unsigned char *end = s.data + s.len;
+  unsigned char *cut = beggining;
 
   for (; cut < end && *cut != c; cut++)
     ;
 
   n.ok = cut < end;
   n.head = slice(beggining, cut);
-  // if ok then we want char after delim,
+  // if ok then we want one past the delim,
   // otherwise we hit the end so just return a 0 len str
   n.tail = slice(n.ok ? cut + 1 : cut, end);
 

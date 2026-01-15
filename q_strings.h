@@ -2,11 +2,12 @@
 
 #include <stddef.h>
 #include <string.h>
+#include <stdbool.h>
 
-#define LITERAL_TO_STR(s) ((str){.data = (char *)s, .len = sizeof(s) - 1})
+#define S(lit) ((str){.data = (unsigned char *)lit, .len = (ptrdiff_t)sizeof(lit) - 1})
 
 typedef struct {
-  char *data;
+  unsigned char *data;
   ptrdiff_t len;
 } str;
 
@@ -17,11 +18,12 @@ typedef struct {
 } snip;
 
 // returns a substring from start to end
-str slice(char *start, char *end);
+str slice(const unsigned char *start, const unsigned char *end);
 
 // returns a snip, splitting s on first instance of c
-snip cut(str s, char c);
+snip cut(const str s, const char c);
 
-bool are_equal(str a, str b);
+bool are_equal(const str a, const str b);
+bool is_valid_str(const str a);
 
-bool is_valid_str(str a);
+void fprint_str(FILE *out, str s);
