@@ -1,5 +1,30 @@
 #include "q_strings.h"
 
+// Output / formatting
+// write exactly s.len bytes (no '\0' assumed)
+void str_fwrite(FILE *out, str s) {
+		if (str_is_empty(s) || str_is_null(s)) {
+				return;
+		}
+		if (out == NULL) {
+				return;
+		}                  
+		fwrite(s.data, sizeof(s.data[0]), (size_t)s.len, out);
+}
+// Interop / safety utilities
+bool str_is_null(str s) {
+		if (s.data == NULL) {
+				return true;
+		}
+		return false;
+}
+
+bool str_is_empty(str s) {
+		if (s.len == 0) {
+				return true;
+		}
+		return false;  
+}  
 bool are_equal(str a, str b) {
   if (a.len != b.len) {
     return false;
