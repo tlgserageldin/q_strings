@@ -4,72 +4,187 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
-#define S(lit) ((str){.data = (unsigned char *)lit, .len = (ptrdiff_t)sizeof(lit) - 1})
+#define S(lit) ((s8){.data = (char *)lit, .len = (ptrdiff_t)sizeof(lit) - 1})
 
-// --- Suggested str wrappers / helpers (names only; implement in .c) ---
-//
-// Output / formatting
-void str_fwrite(FILE *out, str s);   // write exactly s.len bytes (no '\0' assumed)
-void str_fputs(FILE *out, str s);    // same idea, different naming
-void str_print(str s);              // convenience: stdout
-void str_eprint(str s);             // convenience: stderr
-
-// Comparisons / predicates
-bool str_eq(str a, str b);          // length + memcmp
-int  str_cmp(str a, str b);         // lexicographic compare (<0, 0, >0)
-bool str_has_prefix(str s, str prefix);
-bool str_has_suffix(str s, str suffix);
-
-// Searching
-ptrdiff_t str_find_byte(str s, unsigned char c);   // index of first c, or -1
-ptrdiff_t str_rfind_byte(str s, unsigned char c);  // index of last c, or -1
-ptrdiff_t str_find(str s, str needle);             // index of first needle, or -1
-bool      str_contains(str s, str needle);
-
-// Slicing helpers (index-based)
-str str_sub(str s, ptrdiff_t i, ptrdiff_t j);      // like s[i:j] (define your contract)
-str str_take(str s, ptrdiff_t n);                  // first n bytes (clamp/validate)
-str str_drop(str s, ptrdiff_t n);                  // drop first n bytes
-void str_chop_left(str *s, ptrdiff_t n);           // mutate view: advance left by n
-void str_chop_right(str *s, ptrdiff_t n);          // mutate view: shrink right by n
-
-// Trimming (ASCII whitespace)
-str str_ltrim_space(str s);
-str str_rtrim_space(str s);
-str str_trim_space(str s);
-
-// Parsing / conversion (no allocation; return ok)
-bool str_to_i64(str s, int64_t *out);
-bool str_to_u64(str s, uint64_t *out);
-bool str_to_f64(str s, double *out);               // optional
-
-// Interop / safety utilities
-bool str_is_null(str s);                           // e.g. s.data == NULL
-bool str_is_empty(str s);                          // e.g. s.len == 0
-
-// Copy-out / cstring interop (only when needed)
-bool str_to_cstr(str s, char *buf,
-                 size_t bufcap); // copy + NUL; false if too small
 
 typedef struct {
-  unsigned char *data;
-  ptrdiff_t len;
-} str;
+	char *data;
+	ptrdiff_t len;
+} s8;
 
 typedef struct {
-  str head;
-  str tail;
-  bool ok;
+	s8 head;
+	s8 tail;
+	bool ok;
 } snip;
 
-// returns a substring from start to end
-str slice(const unsigned char *start, const unsigned char *end);
+// Interop / safety utilities
+bool s8_is_null(s8 s) {
+	if (s.data == NULL) {
+		return true;
+	}
+	return false;
+}
 
-// returns a snip, splitting s on first instance of c
-snip cut(const str s, const char c);
+bool s8_is_empty(s8 s) {
+	if (s.len == 0) {
+		return true;
+	}
+	return false;
+}
 
-bool are_equal(const str a, const str b);
-bool is_valid_str(const str a);
+// Output / formatting
+// write exactly s.len bytes (no '\0' assumed)
+int s8_fwrite(FILE *out, s8 s) {
 
-void fprint_str(FILE *out, const str s);
+	if (s8_is_empty(s) || s8_is_null(s)) {
+		return -1;
+	}
+	if (out == NULL) {
+		return -1;
+	}
+	return fwrite(s.data, sizeof(s.data[0]), (size_t)s.len, out);
+}
+
+int s8_fputs(FILE *out, const s8 s) {
+
+	int res = EOF;
+	if (s8_is_empty(s) || s8_is_null(s)) {
+		return res;
+	}
+	if (out == NULL) {
+		return res;
+	}
+
+	// allocate + 1 char and then copy over
+	s8 n = {0};
+	n.len = s.len + 1;
+	n.data = (char *) calloc(n.len, sizeof(unsigned char));
+
+	for (int i = 0; i < s.len; ++i) {
+		n.data[i] = s.data[i];
+	}
+
+	res = fputs((char *)n.data, out);
+	return res;
+}
+
+int s8_print(s8 s) {
+
+	int res = -1;
+	if (s8_is_empty(s) || s8_is_null(s)) {
+		return res;
+	}
+
+	// allocate + 1 char and then copy over
+	s8 n = {0};
+	n.len = s.len + 1;
+	n.data = calloc(n.len, sizeof(unsigned char));
+
+	for (int i = 0; i < s.len; ++i) {
+		n.data[i] = s.data[i];
+	}
+
+	res = fprintf(stdout, (char *)n.data);
+	return res;
+
+}
+
+int s8_eprint(s8 s) {
+
+	int res = -1;
+	if (s8_is_empty(s) || s8_is_null(s)) {
+		return res;
+	}
+
+	// allocate + 1 char and then copy over
+	s8 n = {0};
+	n.len = s.len + 1;
+	n.data = (char *) calloc(n.len, sizeof(unsigned char));
+
+	for (int i = 0; i < s.len; ++i) {
+		n.data[i] = s.data[i];
+	}
+
+	res = fprintf(stdout, (char *)n.data);
+	return res;
+
+}
+
+// Comparisons / predicates
+bool s8_eq(s8 a, s8 b); // length + memcmp
+int s8_cmp(s8 a, s8 b); // lexicographic compare (<0, 0, >0)
+
+
+// Copy-out / cs8ing interop (only when needed)
+// copy + NUL; false if too small
+bool s8_to_cstr(s8 s, char *buf, size_t bufcap) {
+
+    if (s8_is_valid(s)) {
+        return false;
+    }
+    // +1 for terminating null
+    if (s.len + 1 > bufcap || buf == NULL) {
+        return false;
+    }
+
+    for (ptrdiff_t i = 0; i < s.len; ++i) {
+        buf[i] = s.data[i];
+    }
+    buf[s.len] = '\0';
+
+    return true;
+}
+
+bool s8_eq(s8 a, s8 b) {
+
+    if (a.len != b.len) {
+        return false;
+    } else if (a.data == b.data) {
+        return true;
+    } else if (!a.data || !b.data) {
+        return false;
+    }
+    return !memcmp(a.data, b.data, a.len);
+
+}
+
+s8 slice(char *start, char *end) {
+
+    s8 s = {0};
+	s.data = start;
+	s.len = start ? end - start : 0;
+	return s;
+
+}
+
+snip cut(s8 s, char c) {
+
+    snip n = {0};
+	if (!s.len) {
+		return n;
+	} // null pointer case
+
+	char *beggining = s.data;
+	char *end = s.data + s.len;
+	char *cut = beggining;
+
+	for (; cut < end && *cut != c; cut++)
+		;
+
+	n.ok = cut < end;
+	n.head = slice(beggining, cut);
+	// if ok then we want one past the delim,
+	// otherwise we hit the end so just return a 0 len s8
+	n.tail = slice(n.ok ? cut + 1 : cut, end);
+
+    return n;
+
+}
+
+// s8 is valid if points to something and has > 0 length
+inline static bool s8_is_valid(s8 a) {
+    return !s8_is_null(a) || !s8_is_empty(a);
+}
